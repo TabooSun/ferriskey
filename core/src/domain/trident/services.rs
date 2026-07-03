@@ -1054,10 +1054,13 @@ where
             .await
             .map_err(|_| CoreError::CreateCredentialError)?;
 
-        self.user_required_action_repository
+        // UpdatePassword may have been added in-memory only (temporary credential path)
+        // without a corresponding row in user_required_actions. Treat "not found" as success.
+        let _ = self
+            .user_required_action_repository
             .remove_required_action(user.id, RequiredAction::UpdatePassword)
             .await
-            .map_err(|_| CoreError::InternalServerError)?;
+            .inspect_err(|e| warn!("Failed to remove UpdatePassword required action: {}", e));
 
         Ok(())
     }
